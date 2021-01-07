@@ -115,6 +115,7 @@ namespace AAEmu.Game.Core.Managers.UnitManagers
             _templates = new Dictionary<uint, NpcTemplate>();
             _goods = new Dictionary<uint, MerchantGoods>();
 
+            _log.Info("Loading npc templates...");
             using (var connection = SQLite.CreateConnection())
             {
                 var lid = new Dictionary<uint, List<uint>>();
