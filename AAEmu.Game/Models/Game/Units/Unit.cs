@@ -172,7 +172,7 @@ namespace AAEmu.Game.Models.Game.Units
         public SkillTask SkillTask { get; set; }
         public SkillTask AutoAttackTask { get; set; }
         public DateTime GlobalCooldown { get; set; }
-        public bool IsGlobalCooldowned => GlobalCooldown > DateTime.UtcNow;
+        public bool IsGlobalCooldowned => GlobalCooldown > DateTime.Now;
         public object GCDLock { get; set; }
         public DateTime SkillLastUsed { get; set; }
         public PlotState ActivePlotState { get; set; }
@@ -212,7 +212,7 @@ namespace AAEmu.Game.Models.Game.Units
             Cooldowns = new UnitCooldowns();
         }
 
-        public virtual void SetPosition(float x, float y, float z, sbyte rotationX, sbyte rotationY, sbyte rotationZ)
+        public override void SetPosition(float x, float y, float z, sbyte rotationX, sbyte rotationY, sbyte rotationZ)
         {
             var moved = !Position.X.Equals(x) || !Position.Y.Equals(y) || !Position.Z.Equals(z);
             if (moved)

@@ -19,6 +19,7 @@ using AAEmu.Game.Models.Game.Items.Actions;
 using MySql.Data.MySqlClient;
 using NLog;
 using AAEmu.Game.Models.Game.Mails;
+using AAEmu.Game.Models.StaticValues;
 using AAEmu.Game.Models.Tasks.Housing;
 using Microsoft.CodeAnalysis.Text;
 
@@ -32,8 +33,6 @@ namespace AAEmu.Game.Core.Managers
         private Dictionary<ushort, House> _housesTl; // TODO or so mb tlId is id in the active zone? or type of house
         private List<uint> _removedHousings;
         private List<HousingItemHousings> _housingItemHousings;
-        private static uint BUFF_UNTOUCHABLE = 545;
-        private static uint REMOVAL_DEBUFF = 2250;
         private static int MAX_HEAVY_TAX_COUNTED = 10; // Maximum number of heavy tax buildings to take into account for tax calculation
         private bool isCheckingTaxTiming = false;
 
@@ -328,11 +327,11 @@ namespace AAEmu.Game.Core.Managers
         {
             if (isUntouchable)
             {
-                if (house.Buffs.CheckBuff(BUFF_UNTOUCHABLE))
+                if (house.Buffs.CheckBuff(BuffsEnum.Untouchable))
                     return;
 
                 // Permanent Untouchable buff, should only be removed when failed tax payment, or demolishing by hand
-                var protectionBuffTemplate = SkillManager.Instance.GetBuffTemplate(BUFF_UNTOUCHABLE);
+                var protectionBuffTemplate = SkillManager.Instance.GetBuffTemplate(BuffsEnum.Untouchable);
                 if (protectionBuffTemplate != null)
                 {
                     var casterObj = new Models.Game.Skills.SkillCasterUnit(house.ObjId);
@@ -347,8 +346,8 @@ namespace AAEmu.Game.Core.Managers
             else
             {
                 // Remove Untouchable if it's enabled
-                if (house.Buffs.CheckBuff(BUFF_UNTOUCHABLE))
-                    house.Buffs.RemoveBuff(BUFF_UNTOUCHABLE);
+                if (house.Buffs.CheckBuff(BuffsEnum.Untouchable))
+                    house.Buffs.RemoveBuff(BuffsEnum.Untouchable);
             }
         }
 
@@ -356,10 +355,10 @@ namespace AAEmu.Game.Core.Managers
         {
             if (isDeteriorating)
             {
-                if (!house.Buffs.CheckBuff(REMOVAL_DEBUFF))
+                if (!house.Buffs.CheckBuff(BuffsEnum.RemovalDebuff))
                 {
                     // Permanent Untouchable buff, should only be removed when failed tax payment, or demolishing by hand
-                    var protectionBuffTemplate = SkillManager.Instance.GetBuffTemplate(REMOVAL_DEBUFF);
+                    var protectionBuffTemplate = SkillManager.Instance.GetBuffTemplate(BuffsEnum.RemovalDebuff);
                     if (protectionBuffTemplate != null)
                     {
                         var casterObj = new Models.Game.Skills.SkillCasterUnit(house.ObjId);
@@ -375,8 +374,8 @@ namespace AAEmu.Game.Core.Managers
             else
             {
                 // Remove Untouchable if it's enabled
-                if (house.Buffs.CheckBuff(REMOVAL_DEBUFF))
-                    house.Buffs.RemoveBuff(REMOVAL_DEBUFF);
+                if (house.Buffs.CheckBuff(BuffsEnum.RemovalDebuff))
+                    house.Buffs.RemoveBuff(BuffsEnum.RemovalDebuff);
             }
         }
 
@@ -417,7 +416,7 @@ namespace AAEmu.Game.Core.Managers
             var baseTax = (int)(house.Template.Taxation?.Tax ?? 0);
             var depositTax = baseTax * 2;
 
-            var weeksDelta = house.ProtectionEndDate - DateTime.UtcNow;
+            var weeksDelta = house.ProtectionEndDate - DateTime.Now;
             var weeks = (int)(weeksDelta.TotalDays / -7f);
             connection.SendPacket(
                 new SCHouseTaxInfoPacket(
@@ -426,7 +425,7 @@ namespace AAEmu.Game.Core.Managers
                     depositTax, // this is used in the help text on (?) when you hover your mouse over it to display deposit tax for this building
                     totalTaxAmountDue, // Amount Due
                     house.ProtectionEndDate,
-                    house.TaxDueDate > DateTime.UtcNow, // already payed if the tax-due date is past now
+                    house.TaxDueDate > DateTime.Now, // already payed if the tax-due date is past now
                     weeks,  // TODO: do proper calculation
                     house.Template.HeavyTax
                 )
@@ -540,8 +539,8 @@ namespace AAEmu.Game.Core.Managers
             house.CoOwnerId = connection.ActiveChar.Id;
             house.AccountId = connection.AccountId;
             house.Permission = HousingPermission.Private;
-            house.PlaceDate = DateTime.UtcNow;
-            house.ProtectionEndDate = DateTime.UtcNow.AddDays(7);
+            house.PlaceDate = DateTime.Now;
+            house.ProtectionEndDate = DateTime.Now.AddDays(7);
             _houses.Add(house.Id, house);
             _housesTl.Add(house.TlId, house);
             connection.ActiveChar.SendPacket(new SCMyHousePacket(house));
@@ -603,7 +602,7 @@ namespace AAEmu.Game.Core.Managers
                 // VERIFY: check if tax payed, cannot manually demolish or sell a house with unpaid taxes ?
                 // Note - ZeromusXYZ: I'm disabling this "feature", as it would prevent you from demolishing freshly placed buildings that you want to move 
                 /*
-                if (house.TaxDueDate <= DateTime.UtcNow)
+                if (house.TaxDueDate <= DateTime.Now)
                 {
                     connection.ActiveChar.SendErrorMessage(ErrorMessageType.HouseCannotDemolishUnpaidTax);
                     return;
@@ -612,7 +611,7 @@ namespace AAEmu.Game.Core.Managers
                 var ownerChar = WorldManager.Instance.GetCharacterById(house.OwnerId);
 
                 // Mark it as expired protection
-                house.ProtectionEndDate = DateTime.UtcNow.AddSeconds(-1);
+                house.ProtectionEndDate = DateTime.Now.AddSeconds(-1);
                 // Make sure to call UpdateTaxInfo first to remove tax-rated mails of this house
                 UpdateTaxInfo(house);
                 // Return items to player by mail
@@ -628,7 +627,7 @@ namespace AAEmu.Game.Core.Managers
 
                 ownerChar?.SendPacket(new SCMyHouseRemovedPacket(house.TlId));
                 // Make killable
-                UpdateHouseFaction(house, (uint)Factions.FACTION_MONSTROSITY);
+                UpdateHouseFaction(house, (uint)FactionsEnum.Monstrosity);
                 house.IsDirty = true;
 
                 // TODO: better house killing handling
@@ -702,8 +701,8 @@ namespace AAEmu.Game.Core.Managers
 
         public void UpdateTaxInfo(House house)
         {
-            var isDemolished = (house.ProtectionEndDate <= DateTime.UtcNow);
-            var isTaxDue = (house.TaxDueDate <= DateTime.UtcNow);
+            var isDemolished = (house.ProtectionEndDate <= DateTime.Now);
+            var isTaxDue = (house.TaxDueDate <= DateTime.Now);
 
             // Update Buffs (if needed)
             SetUntouchable(house, !isDemolished);
@@ -824,11 +823,11 @@ namespace AAEmu.Game.Core.Managers
                     newMail.Header.SenderName = ".houseDemolish";
                     newMail.Title = "title";
                     newMail.Body.Text = "body"; // Yes, that's indeed what it needs to be set to
-                    newMail.Body.SendDate = DateTime.UtcNow;
+                    newMail.Body.SendDate = DateTime.Now;
                     if (failedToPayTax)
-                        newMail.Body.RecvDate = DateTime.UtcNow.AddHours(22);
+                        newMail.Body.RecvDate = DateTime.Now.AddHours(22);
                     else
-                        newMail.Body.RecvDate = DateTime.UtcNow;
+                        newMail.Body.RecvDate = DateTime.Now;
                     newMail.Header.Extra = house.Id;
                 }
                 // Only attach money to first mail
@@ -1009,7 +1008,7 @@ namespace AAEmu.Game.Core.Managers
                 var expiredHouseList = new List<House>();
                 foreach (var house in _houses)
                 {
-                    if ((house.Value?.ProtectionEndDate <= DateTime.UtcNow) && (house.Value?.OwnerId > 0))
+                    if ((house.Value?.ProtectionEndDate <= DateTime.Now) && (house.Value?.OwnerId > 0))
                         expiredHouseList.Add(house.Value);
                     UpdateTaxInfo(house.Value);
                 }
