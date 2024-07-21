@@ -1,148 +1,226 @@
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
 using AAEmu.Commons.Utils;
+using AAEmu.Commons.Utils.DB;
 using AAEmu.Login.Core.Network.Connections;
+using AAEmu.Login.Core.Network.Internal;
 using AAEmu.Login.Core.Packets.L2C;
 using AAEmu.Login.Core.Packets.L2G;
 using AAEmu.Login.Models;
-using AAEmu.Login.Utils;
 using NLog;
 
-namespace AAEmu.Login.Core.Controllers
+namespace AAEmu.Login.Core.Controllers;
+
+public class GameController : Singleton<GameController>
 {
-    public class GameController : Singleton<GameController>
+    private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+    private Dictionary<byte, GameServer> _gameServers;
+    private Dictionary<byte, byte> _mirrorsId;
+
+    public byte? GetParentId(byte gsId)
     {
-        private static Logger _log = LogManager.GetCurrentClassLogger();
-        private Dictionary<byte, GameServer> _gameServers;
-        private Dictionary<byte, byte> _mirrorsId;
+        if (_mirrorsId.TryGetValue(gsId, out var id))
+            return id;
+        return null;
+    }
 
-        public byte? GetParentId(byte gsId)
+
+    protected GameController()
+    {
+        _gameServers = new Dictionary<byte, GameServer>();
+        _mirrorsId = new Dictionary<byte, byte>();
+    }
+
+    private static async Task SendPacketWithDelay(InternalConnection connection, int delay, InternalPacket message)
+    {
+        await Task.Delay(delay);
+        connection.SendPacket(message);
+    }
+
+    private static string ResolveHostName(string host)
+    {
+        try
         {
-            if (_mirrorsId.ContainsKey(gsId))
-                return _mirrorsId[gsId];
-            return null;
-        }
-
-
-        protected GameController()
-        {
-            _gameServers = new Dictionary<byte, GameServer>();
-            _mirrorsId = new Dictionary<byte, byte>();
-        }
-
-        public void Load()
-        {
-            using (var connection = MySQL.Create())
+            var parsedHost = Dns.GetHostEntry(host);
+            foreach (var ipAddress in parsedHost.AddressList)
             {
-                using (var command = connection.CreateCommand())
+                // For whatever reason, we can't just access the IsIPv4 property here
+                // if (ipAddress.IsIPv4)
+                //     return ipAddress.ToString();
+                var ipString = ipAddress.ToString();
+                if (ipString.Split('.').Length == 4)
                 {
-                    command.CommandText = "SELECT * FROM game_servers WHERE hidden = 0";
-                    command.Prepare();
-                    using (var reader = command.ExecuteReader())
+                    Logger.Debug($"Resolved {host} to {ipString}");
+                    return ipString;
+                }
+            }
+            Logger.Warn($"Unable to resolved {host}");
+            return host;
+        }
+        catch (Exception e)
+        {
+            // in case of errors, just return it un-parsed
+            Logger.Error(e, $"Exception resolving {host}: {e.Message}");
+            return host;
+        }
+    }
+
+    public void Load()
+    {
+        using (var connection = MySQL.CreateConnection())
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SELECT * FROM game_servers WHERE hidden = 0";
+                command.Prepare();
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
                     {
-                        while (reader.Read())
-                        {
-                            var gameServer = new GameServer(
-                                reader.GetByte("id"),
-                                reader.GetString("name"),
-                                reader.GetString("host"),
-                                reader.GetUInt16("port"));
-                            _gameServers.Add(gameServer.Id, gameServer);
-                        }
+                        var id = reader.GetByte("id");
+                        var name = reader.GetString("name");
+                        var loadedHost = reader.GetString("host");
+                        var host = AppConfiguration.Instance.SkipHostResolve ? loadedHost : ResolveHostName(loadedHost);
+                        var port = reader.GetUInt16("port");
+                        var gameServer = new GameServer(id, name, host, port);
+                        _gameServers.Add(gameServer.Id, gameServer);
+
+                        var extraInfo = host != loadedHost ? "from " + loadedHost :
+                            AppConfiguration.Instance.SkipHostResolve ? " (unresolved)" : "";
+                        Logger.Info($"Game Server {id}: {name} -> {host}:{port} {extraInfo}");
                     }
                 }
             }
 
-            _log.Info("Loaded {0} gs", _gameServers.Count);
-        }
-
-        public void Add(byte gsId, List<byte> mirrorsId, InternalConnection connection)
-        {
-            if (!_gameServers.ContainsKey(gsId))
+            if (_gameServers.Count <= 0)
             {
-                connection.SendPacket(new LGRegisterGameServerPacket(GSRegisterResult.Error));
+                Logger.Fatal("No servers have been defined in the game_servers table!");
                 return;
             }
+        }
 
-            var gameServer = _gameServers[gsId];
-            gameServer.Connection = connection;
-            gameServer.MirrorsId.AddRange(mirrorsId);
-            connection.GameServer = gameServer;
-            connection.AddAttribute("gsId", gameServer.Id);
-            gameServer.SendPacket(new LGRegisterGameServerPacket(GSRegisterResult.Success));
+        Logger.Info($"Loaded {_gameServers.Count} game server(s)");
+    }
 
-            foreach (var mirrorId in mirrorsId)
+    public void Add(byte gsId, List<byte> mirrorsId, InternalConnection connection)
+    {
+        if (!_gameServers.ContainsKey(gsId))
+        {
+            Logger.Error($"GameServer connection from {connection.Ip} is requesting an invalid WorldId {gsId}");
+
+            Task.Run(() => SendPacketWithDelay(connection, 5000, new LGRegisterGameServerPacket(GSRegisterResult.Error)));
+            // connection.SendPacket(new LGRegisterGameServerPacket(GSRegisterResult.Error));
+            return;
+        }
+
+        var gameServer = _gameServers[gsId];
+        gameServer.Connection = connection;
+        gameServer.MirrorsId.AddRange(mirrorsId);
+        connection.GameServer = gameServer;
+        connection.AddAttribute("gsId", gameServer.Id);
+        gameServer.SendPacket(new LGRegisterGameServerPacket(GSRegisterResult.Success));
+
+        foreach (var mirrorId in mirrorsId)
+        {
+            _gameServers[mirrorId].Connection = connection;
+            _mirrorsId.Add(mirrorId, gsId);
+        }
+        Logger.Info($"Registered GameServer {gameServer.Id} ({gameServer.Name}) from {connection.Ip}");
+    }
+
+    public void Remove(byte gsId)
+    {
+        if (!_gameServers.ContainsKey(gsId))
+            return;
+
+        var gameServer = _gameServers[gsId];
+        gameServer.Connection = null;
+
+        foreach (var mirrorId in gameServer.MirrorsId)
+        {
+            if (_gameServers.TryGetValue(mirrorId, out var server))
+                server.Connection = null;
+
+            _mirrorsId.Remove(mirrorId);
+        }
+
+        gameServer.MirrorsId.Clear();
+    }
+
+    public async Task RequestWorldListAsync(LoginConnection connection)
+    {
+        var gameServers = _gameServers.Values.ToList();
+        if (_gameServers.Values.Any(x => x.Active))
+        {
+            var (requestIds, creationTask) =
+                RequestController.Instance.Create(gameServers.Count, 20000); // TODO Request 20s
+            for (var i = 0; i < gameServers.Count; i++)
             {
-                _gameServers[mirrorId].Connection = connection;
-                _mirrorsId.Add(mirrorId, gsId);
-            }
-
-            _log.Info("Registered GameServer {0}", gameServer.Id);
-        }
-
-        public void Remove(byte gsId)
-        {
-            if (!_gameServers.ContainsKey(gsId))
-                return;
-
-            var gameServer = _gameServers[gsId];
-            gameServer.Connection = null;
-
-            foreach (var mirrorId in gameServer.MirrorsId)
-            {
-                if (_gameServers.ContainsKey(mirrorId))
-                    _gameServers[mirrorId].Connection = null;
-
-                _mirrorsId.Remove(mirrorId);
-            }
-
-            gameServer.MirrorsId.Clear();
-        }
-
-        public void RequestWorldList(LoginConnection connection)
-        {
-            var gsList = new List<GameServer>(_gameServers.Values);
-            connection.SendPacket(new ACWorldListPacket(gsList, connection.GetCharacters()));
-        }
-
-        public void SetLoad(byte gsId, byte load)
-        {
-            lock (_gameServers)
-            {
-                _gameServers[gsId].Load = (GSLoad) load;
-            }
-        }
-
-        public void RequestEnterWorld(LoginConnection connection, byte gsId)
-        {
-            if (!_gameServers.ContainsKey(gsId))
-                return;
-            var gs = _gameServers[gsId];
-            if (!gs.Active)
-                return;
-            gs.SendPacket(new LGPlayerEnterPacket(connection.AccountId, connection.Id));
-        }
-
-        public void EnterWorld(LoginConnection connection, byte gsId, byte result)
-        {
-            if (result == 0)
-            {
-                if (_gameServers.ContainsKey(gsId))
+                var value = gameServers[i];
+                if (!value.Active)
                 {
-                    connection.SendPacket(new ACWorldCookiePacket((int) connection.Id, _gameServers[gsId]));
+                    RequestController.Instance.ReleaseId(requestIds[i]);
+                    continue;
                 }
-                else
+
+                var loaded = connection.Characters.ContainsKey(value.Id);
+                if (loaded)
                 {
-                    // TODO ...
+                    RequestController.Instance.ReleaseId(requestIds[i]);
+                    continue;
                 }
+
+                value.SendPacket(
+                       new LGRequestInfoPacket(connection.Id, requestIds[i], connection.AccountId));
+
             }
-            else if (result == 1)
+
+            await creationTask;
+        }
+        connection.SendPacket(new ACWorldListPacket(gameServers, connection.GetCharacters()));
+    }
+
+    public void SetLoad(byte gsId, byte load)
+    {
+        lock (_gameServers)
+        {
+            _gameServers[gsId].Load = (GSLoad)load;
+        }
+    }
+
+    public void RequestEnterWorld(LoginConnection connection, byte gsId)
+    {
+        if (!_gameServers.ContainsKey(gsId))
+            return;
+        var gs = _gameServers[gsId];
+        if (!gs.Active)
+            return;
+        gs.SendPacket(new LGPlayerEnterPacket(connection.AccountId, connection.Id));
+    }
+
+    public void EnterWorld(LoginConnection connection, byte gsId, byte result)
+    {
+        if (result == 0)
+        {
+            if (_gameServers.TryGetValue(gsId, out var server))
             {
-                connection.SendPacket(new ACEnterWorldDeniedPacket(0)); // TODO change reason
+                connection.SendPacket(new ACWorldCookiePacket(connection, server));
             }
             else
             {
                 // TODO ...
             }
+        }
+        else if (result == 1)
+        {
+            connection.SendPacket(new ACEnterWorldDeniedPacket(0)); // TODO change reason
+        }
+        else
+        {
+            // TODO ...
         }
     }
 }

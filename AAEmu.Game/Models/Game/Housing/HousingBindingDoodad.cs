@@ -1,11 +1,11 @@
-using AAEmu.Game.Models.Game.World;
+﻿using AAEmu.Game.Models.Game.DoodadObj.Static;
+using AAEmu.Game.Models.Game.World.Transform;
 
-namespace AAEmu.Game.Models.Game.Housing
+namespace AAEmu.Game.Models.Game.Housing;
+
+public class HousingBindingDoodad
 {
-    public class HousingBindingDoodad
-    {
-        public uint AttachPointId { get; set; }
-        public uint DoodadId { get; set; }
-        public Point Position { get; set; }
-    }
+    public AttachPointKind AttachPointId { get; set; }
+    public uint DoodadId { get; set; }
+    public WorldSpawnPosition Position { get; set; }
 }

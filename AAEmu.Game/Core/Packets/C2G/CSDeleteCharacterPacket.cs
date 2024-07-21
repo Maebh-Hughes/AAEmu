@@ -1,18 +1,18 @@
-using AAEmu.Commons.Network;
+﻿using AAEmu.Commons.Network;
+using AAEmu.Game.Core.Managers.UnitManagers;
 using AAEmu.Game.Core.Network.Game;
 
-namespace AAEmu.Game.Core.Packets.C2G
-{
-    public class CSDeleteCharacterPacket : GamePacket
-    {
-        public CSDeleteCharacterPacket() : base(0x023, 1)
-        {
-        }
+namespace AAEmu.Game.Core.Packets.C2G;
 
-        public override void Read(PacketStream stream)
-        {
-            var characterId = stream.ReadUInt32();
-            Connection.SetDeleteCharacter(characterId);
-        }
+public class CSDeleteCharacterPacket : GamePacket
+{
+    public CSDeleteCharacterPacket() : base(CSOffsets.CSDeleteCharacterPacket, 1)
+    {
+    }
+
+    public override void Read(PacketStream stream)
+    {
+        var characterId = stream.ReadUInt32();
+        CharacterManager.SetDeleteCharacter(Connection, characterId);
     }
 }

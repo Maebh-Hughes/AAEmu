@@ -1,13 +1,12 @@
-using AAEmu.Game.Core.Network.Game;
+﻿using AAEmu.Game.Core.Network.Game;
 
-namespace AAEmu.Game.Core.Packets.Proxy
+namespace AAEmu.Game.Core.Packets.Proxy;
+
+public class VoiceDataPacket : GamePacket
 {
-    public class VoiceDataPacket : GamePacket
+    // TODO Only command without body...
+    public VoiceDataPacket() : base(PPOffsets.VoiceDataPacket, 2)
     {
-        // TODO Only command without body...
-        public VoiceDataPacket() : base(0x00b, 2)
-        {
 
-        }
     }
 }

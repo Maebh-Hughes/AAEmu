@@ -1,8 +1,17 @@
-namespace AAEmu.Game.Models.Game.DoodadObj
+﻿namespace AAEmu.Game.Models.Game.DoodadObj;
+
+public class DoodadFuncGroups
 {
-    public class DoodadFuncGroups
+    public enum DoodadFuncGroupKind : uint
     {
-        public uint Id { get; set; }
-        public uint GroupKindId { get; set; }
+        Start = 1,
+        Normal = 2,
+        End = 3
     }
+
+    public uint Id { get; set; }
+    public uint Almighty { get; set; }
+    public DoodadFuncGroupKind GroupKindId { get; set; }
+    public uint SoundId { get; set; }
+    public string Model { get; set; }
 }

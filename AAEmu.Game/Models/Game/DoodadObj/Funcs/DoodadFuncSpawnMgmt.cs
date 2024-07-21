@@ -1,17 +1,17 @@
-using AAEmu.Game.Models.Game.DoodadObj.Templates;
+﻿using AAEmu.Game.Models.Game.DoodadObj.Templates;
 using AAEmu.Game.Models.Game.Units;
 
-namespace AAEmu.Game.Models.Game.DoodadObj.Funcs
+namespace AAEmu.Game.Models.Game.DoodadObj.Funcs;
+
+public class DoodadFuncSpawnMgmt : DoodadPhaseFuncTemplate
 {
-    public class DoodadFuncSpawnMgmt : DoodadFuncTemplate
+    public uint GroupId { get; set; }
+    public bool Spawn { get; set; }
+    public uint ZoneId { get; set; }
+
+    public override bool Use(BaseUnit caster, Doodad owner)
     {
-        public uint GroupId { get; set; }
-        public bool Spawn { get; set; }
-        public uint ZoneId { get; set; }
-        
-        public override void Use(Unit caster, Doodad owner, uint skillId)
-        {
-            _log.Debug("DoodadFuncSpawnMgmt");
-        }
+        Logger.Trace("DoodadFuncSpawnMgmt");
+        return false;
     }
 }

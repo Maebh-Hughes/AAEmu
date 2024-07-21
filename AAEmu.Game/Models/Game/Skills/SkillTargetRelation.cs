@@ -1,12 +1,11 @@
-namespace AAEmu.Game.Models.Game.Skills
+namespace AAEmu.Game.Models.Game.Skills;
+
+public enum SkillTargetRelation : byte
 {
-    public enum SkillTargetRelation : byte
-    {
-        Self = 0,
-        Unit = 1,
-        Unk2 = 2,
-        Friendly2 = 3,
-        Hostile = 4,
-        Unk5 = 5
-    }
+    Any = 0,
+    Friendly = 1,
+    Party = 2,
+    Raid = 3,
+    Hostile = 4,
+    Others = 5
 }

@@ -1,15 +1,16 @@
-using AAEmu.Game.Models.Game.DoodadObj.Templates;
+﻿using AAEmu.Game.Models.Game.DoodadObj.Templates;
 using AAEmu.Game.Models.Game.Units;
 
-namespace AAEmu.Game.Models.Game.DoodadObj.Funcs
+namespace AAEmu.Game.Models.Game.DoodadObj.Funcs;
+
+public class DoodadFuncNaviRemove : DoodadFuncTemplate
 {
-    public class DoodadFuncNaviRemove : DoodadFuncTemplate
+    // doodad_funcs
+    public int ReqLaborPower { get; set; }
+
+    public override void Use(BaseUnit caster, Doodad owner, uint skillId, int nextPhase = 0)
     {
-        public int ReqLaborPower { get; set; }
-        
-        public override void Use(Unit caster, Doodad owner, uint skillId)
-        {
-            _log.Debug("DoodadFuncNaviRemove");
-        }
+        Logger.Trace("DoodadFuncNaviRemove");
+
     }
 }

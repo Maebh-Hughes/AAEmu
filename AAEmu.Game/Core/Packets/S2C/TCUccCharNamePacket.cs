@@ -1,20 +1,24 @@
-using AAEmu.Commons.Network;
+﻿using AAEmu.Commons.Network;
 using AAEmu.Game.Core.Network.Stream;
 
-namespace AAEmu.Game.Core.Packets.S2C
+namespace AAEmu.Game.Core.Packets.S2C;
+
+public class TCUccCharNamePacket : StreamPacket
 {
-    public class TCUccCharNamePacket : StreamPacket
+    private readonly uint _id;
+    private readonly string _name;
+
+    public TCUccCharNamePacket(uint id, string name) : base(TCOffsets.TCUccCharNamePacket)
     {
-        public TCUccCharNamePacket() : base(0x08)
-        {
-        }
+        _id = id;
+        _name = name;
+    }
 
-        public override PacketStream Write(PacketStream stream)
-        {
-            stream.Write((uint) 0); // type
-            stream.Write((ushort) 0); // "name" length
+    public override PacketStream Write(PacketStream stream)
+    {
+        stream.Write(_id);
+        stream.Write(_name);
 
-            return stream;
-        }
+        return stream;
     }
 }

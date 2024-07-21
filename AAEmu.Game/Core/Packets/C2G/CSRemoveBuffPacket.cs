@@ -1,34 +1,50 @@
-using AAEmu.Commons.Network;
+﻿using AAEmu.Commons.Network;
+using AAEmu.Game.Core.Managers;
 using AAEmu.Game.Core.Network.Game;
 using AAEmu.Game.Models.Game.Skills;
-using AAEmu.Game.Models.Game.Skills.Effects;
-using AAEmu.Game.Models.Game.Skills.Templates;
 
-namespace AAEmu.Game.Core.Packets.C2G
+namespace AAEmu.Game.Core.Packets.C2G;
+
+public class CSRemoveBuffPacket : GamePacket
 {
-    public class CSRemoveBuffPacket : GamePacket
+    public CSRemoveBuffPacket() : base(CSOffsets.CSRemoveBuffPacket, 1)
     {
-        public CSRemoveBuffPacket() : base(0x055, 1)
+    }
+
+    public override void Read(PacketStream stream)
+    {
+        var objId = stream.ReadBc();
+        var buffId = stream.ReadUInt32();
+        var reason = stream.ReadByte();
+
+        var mate = MateManager.Instance.GetActiveMate(Connection.ActiveChar.ObjId);
+        if (mate?.ObjId == objId)
         {
+            var mateEffect = mate.Buffs.GetEffectByIndex(buffId);
+            if (RemoveEffect(mateEffect)) { return; }
         }
 
-        public override void Read(PacketStream stream)
+        var slave = SlaveManager.Instance.GetSlaveByObjId(objId);
+        if (slave != null)
         {
-            var objId = stream.ReadBc();
-            var buffId = stream.ReadUInt32();
-            var reason = stream.ReadByte();
+            var slaveEffect = slave.Buffs.GetEffectByIndex(buffId);
+            if (RemoveEffect(slaveEffect)) { return; }
+        }
 
-            if (Connection.ActiveChar.ObjId != objId)
-                return;
-            var effect = Connection.ActiveChar.Effects.GetEffectByIndex(buffId);
-            if (effect == null)
-                return;
-            if (effect.Template is BuffTemplate template)
-                if (template.Kind == BuffKind.Good)
-                    effect.Exit();
-            if (effect.Template is BuffEffect buffEffect)
-                if (buffEffect.Buff.Kind == BuffKind.Good)
-                    effect.Exit();
+        if (Connection.ActiveChar.ObjId != objId)
+            return;
+        var effect = Connection.ActiveChar.Buffs.GetEffectByIndex(buffId);
+        if (RemoveEffect(effect)) { return; }
+
+        return;
+
+        bool RemoveEffect(Buff buffEffect)
+        {
+            if (buffEffect == null)
+                return false;
+            if (buffEffect.Template.Kind == BuffKind.Good)
+                buffEffect.Exit();
+            return true;
         }
     }
 }

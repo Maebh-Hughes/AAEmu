@@ -1,29 +1,35 @@
 ﻿using AAEmu.Commons.Network;
 
-namespace AAEmu.Game.Models.Game.Items.Actions
+namespace AAEmu.Game.Models.Game.Items.Actions;
+
+public class ItemUpdateBits : ItemTask
 {
-    public class ItemUpdateBits : ItemTask
+    private readonly ulong _itemId;
+    private readonly SlotType _slotType;
+    private readonly byte _slot;
+    private readonly byte _bits;
+    //private readonly byte _oldBits;
+
+    public ItemUpdateBits(Item item)
     {
-        private readonly Item _item;
-        private readonly byte _bits;
+        _itemId = item.Id;
+        _slotType = item.SlotType;
+        _slot = (byte)item.Slot;
+        _bits = (byte)item.ItemFlags;
+        _type = ItemAction.SetFlagsBits; // 10
+        // 10 image
+        // 20 unwrapp
+        //_oldBits = oldBits;
+    }
 
-        public ItemUpdateBits(Item item, byte bits)
-        {
-            _item = item;
-            _bits = bits;
-            _type = 0xA; // 10
-            // 10 image
-            // 20 unwrapp
-        }
-
-        public override PacketStream Write(PacketStream stream)
-        {
-            base.Write(stream);
-            stream.Write((byte)_item.SlotType);
-            stream.Write((byte)_item.Slot);
-            stream.Write(_item.Id);
-            stream.Write(_bits);
-            return stream;
-        }
+    public override PacketStream Write(PacketStream stream)
+    {
+        base.Write(stream);
+        stream.Write((byte)_slotType);
+        stream.Write(_slot);
+        stream.Write(_itemId);
+        stream.Write(_bits);
+        stream.Write((ulong)0);
+        return stream;
     }
 }

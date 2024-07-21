@@ -1,21 +1,25 @@
-using AAEmu.Commons.Network;
+﻿using AAEmu.Commons.Network;
 using AAEmu.Game.Core.Network.Stream;
+using AAEmu.Game.Models.Stream;
 
-namespace AAEmu.Game.Core.Packets.S2C
+namespace AAEmu.Game.Core.Packets.S2C;
+
+public class TCUccComplexPacket : StreamPacket
 {
-    public class TCUccComplexPacket : StreamPacket
+    private Ucc _ucc;
+    public TCUccComplexPacket(Ucc ucc) : base(TCOffsets.TCUccComplexPacket)
     {
-        public TCUccComplexPacket() : base(0x05)
-        {
-        }
+        _ucc = ucc;
+    }
 
-        public override PacketStream Write(PacketStream stream)
-        {
-            for (var i = 0; i < 4; i++)
-                stream.Write((long) 0); // type
-            stream.Write((ulong) 0); // modified
+    public override PacketStream Write(PacketStream stream)
+    {
+        stream.Write((ulong)_ucc.Id); // type
+        stream.Write((ulong)0); // type unk
+        stream.Write((ulong)0); // type unk
+        stream.Write((ulong)_ucc.Id); // type
+        stream.Write(_ucc.Modified); // modified
 
-            return stream;
-        }
+        return stream;
     }
 }

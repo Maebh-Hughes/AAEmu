@@ -1,12 +1,11 @@
-using AAEmu.Game.Core.Network.Game;
+﻿using AAEmu.Game.Core.Network.Game;
 
-namespace AAEmu.Game.Core.Packets.Proxy
+namespace AAEmu.Game.Core.Packets.Proxy;
+
+public class BeginBindObjPacket : GamePacket
 {
-    public class BeginBindObjPacket : GamePacket
+    // TODO Only command without body...
+    public BeginBindObjPacket() : base(PPOffsets.BeginBindObjPacket, 2)
     {
-        // TODO Only command without body...
-        public BeginBindObjPacket() : base(0x007, 2)
-        {
-        }
     }
 }

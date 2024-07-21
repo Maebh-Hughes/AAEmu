@@ -1,21 +1,21 @@
-using AAEmu.Commons.Network;
+﻿using AAEmu.Commons.Network;
 using AAEmu.Game.Core.Managers;
 using AAEmu.Game.Core.Network.Game;
 
-namespace AAEmu.Game.Core.Packets.C2G
+namespace AAEmu.Game.Core.Packets.C2G;
+
+public class CSDespawnSlavePacket : GamePacket
 {
-    public class CSDespawnSlavePacket : GamePacket
+    public CSDespawnSlavePacket() : base(CSOffsets.CSDespawnSlavePacket, 1)
     {
-        public CSDespawnSlavePacket() : base(0x02f, 1)
-        {
-        }
+        //
+    }
 
-        public override void Read(PacketStream stream)
-        {
-            var slaveObjId = stream.ReadBc();
+    public override void Read(PacketStream stream)
+    {
+        var slaveObjId = stream.ReadBc();
 
-            //_log.Debug("DespawnSlave, SlaveObjId: {0}", slaveObjId);
-            SlaveManager.Instance.Delete(Connection.ActiveChar, slaveObjId);
-        }
+        // Logger.Debug($"DespawnSlave, SlaveObjId: {slaveObjId}");
+        SlaveManager.Instance.Delete(Connection.ActiveChar, slaveObjId, false);
     }
 }

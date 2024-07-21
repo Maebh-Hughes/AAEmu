@@ -1,19 +1,19 @@
-using AAEmu.Commons.Network;
+﻿using AAEmu.Commons.Network;
+using AAEmu.Game.Core.Managers;
 using AAEmu.Game.Core.Network.Game;
 
-namespace AAEmu.Game.Core.Packets.C2G
+namespace AAEmu.Game.Core.Packets.C2G;
+
+public class CSChallengeDuelPacket : GamePacket
 {
-    public class CSChallengeDuelPacket : GamePacket
+    public CSChallengeDuelPacket() : base(CSOffsets.CSChallengeDuelPacket, 1)
     {
-        public CSChallengeDuelPacket() : base(0x050, 1)
-        {
-        }
+    }
 
-        public override void Read(PacketStream stream)
-        {
-            var id = stream.ReadUInt32();
+    public override void Read(PacketStream stream)
+    {
+        var challengedId = stream.ReadUInt32(); // Id the one we challenged to a duel
 
-            _log.Warn("ChallengeDuel, Id: {0}", id);
-        }
+        DuelManager.Instance.DuelRequest(Connection.ActiveChar, challengedId); // only to the enemy
     }
 }

@@ -1,15 +1,16 @@
-using AAEmu.Game.Models.Game.DoodadObj.Templates;
+﻿using AAEmu.Game.Models.Game.DoodadObj.Templates;
 using AAEmu.Game.Models.Game.Units;
 
-namespace AAEmu.Game.Models.Game.DoodadObj.Funcs
+namespace AAEmu.Game.Models.Game.DoodadObj.Funcs;
+
+public class DoodadFuncBuyFishModel : DoodadPhaseFuncTemplate
 {
-    public class DoodadFuncBuyFishModel : DoodadFuncTemplate
+    // doodad_phase_funcs
+    public string Name { get; set; }
+
+    public override bool Use(BaseUnit caster, Doodad owner)
     {
-        public string Name { get; set; }
-        
-        public override void Use(Unit caster, Doodad owner, uint skillId)
-        {
-            _log.Debug("DoodadFuncBuyFishModel");
-        }
+        Logger.Trace("DoodadFuncBuyFishModel");
+        return false;
     }
 }

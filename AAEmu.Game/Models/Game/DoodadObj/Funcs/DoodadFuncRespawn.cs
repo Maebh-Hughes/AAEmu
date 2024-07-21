@@ -1,16 +1,34 @@
+﻿using AAEmu.Game.Core.Managers.World;
+using AAEmu.Game.Models.Game.Char;
 using AAEmu.Game.Models.Game.DoodadObj.Templates;
 using AAEmu.Game.Models.Game.Units;
 
-namespace AAEmu.Game.Models.Game.DoodadObj.Funcs
+namespace AAEmu.Game.Models.Game.DoodadObj.Funcs;
+
+public class DoodadFuncRespawn : DoodadPhaseFuncTemplate
 {
-    public class DoodadFuncRespawn : DoodadFuncTemplate
+    public int MinTime { get; set; }
+    public int MaxTime { get; set; }
+
+    public override bool Use(BaseUnit caster, Doodad owner)
     {
-        public int MinTime { get; set; }
-        public int MaxTime { get; set; }
-        
-        public override void Use(Unit caster, Doodad owner, uint skillId)
+        Logger.Trace("DoodadFuncRespawn: MinTime {0}, MaxTime {1}", MinTime, MaxTime);
+
+        // Doodad spawn
+        if (caster is Character character)
         {
-            _log.Debug("DoodadFuncRespawn");
+            using var spawnPos = character.Transform.Clone();
+            spawnPos.Local.AddDistanceToFront(1f);
+            spawnPos.Local.SetHeight(WorldManager.Instance.GetHeight(spawnPos));
+            var doodad = new DoodadSpawner
+            {
+                Id = owner.ObjId,
+                UnitId = owner.TemplateId,
+                Position = spawnPos.CloneAsSpawnPosition()
+            };
+            doodad.Spawn(0);
         }
+
+        return false;
     }
 }

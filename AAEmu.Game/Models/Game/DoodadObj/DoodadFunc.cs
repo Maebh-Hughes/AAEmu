@@ -1,42 +1,26 @@
-using System;
-using AAEmu.Game.Core.Managers.UnitManagers;
+﻿using AAEmu.Game.Core.Managers.UnitManagers;
 using AAEmu.Game.Models.Game.Units;
 
-namespace AAEmu.Game.Models.Game.DoodadObj
+namespace AAEmu.Game.Models.Game.DoodadObj;
+
+public class DoodadFunc
 {
-    public class DoodadFunc
+    public uint GroupId { get; set; }
+    public uint FuncId { get; set; }
+    public uint FuncKey { get; set; }
+    public string FuncType { get; set; }
+    public int NextPhase { get; set; }
+    public uint SoundId { get; set; }
+    public uint SkillId { get; set; }
+    public uint PermId { get; set; }
+    public int Count { get; set; }
+
+    //This acts as an interface/relay for doodad function chain
+    //public async void Use(BaseUnit caster, Doodad owner, uint skillId, int nextPhase = 0)
+    public void Use(BaseUnit caster, Doodad owner, uint skillId = 0, int nextPhase = 0)
     {
-        public uint GroupId { get; set; }
-        public uint FuncId { get; set; }
-        public string FuncType { get; set; }
-        public int NextPhase { get; set; }
-        public uint SkillId { get; set; }
-        public uint PermId { get; set; }
-        public int Count { get; set; }
+        var template = DoodadManager.Instance.GetFuncTemplate(FuncId, FuncType);
 
-        public async void Use(Unit caster, Doodad owner, uint skillId)
-        {
-            owner.GrowthTime = DateTime.MinValue;
-            var template = DoodadManager.Instance.GetFuncTemplate(FuncId, FuncType);
-
-            if (template == null)
-                return;
-
-            template.Use(caster, owner, skillId);
-
-            if (NextPhase > 0)
-            {
-                if (owner.FuncTask != null)
-                {
-                    await owner.FuncTask.Cancel();
-                    owner.FuncTask = null;
-                }
-
-                owner.FuncGroupId = (uint)NextPhase;
-                var funcs = DoodadManager.Instance.GetPhaseFunc(owner.FuncGroupId);
-                foreach (var func in funcs)
-                    func.Use(caster, owner, skillId);
-            }
-        }
+        template?.Use(caster, owner, skillId, nextPhase);
     }
 }

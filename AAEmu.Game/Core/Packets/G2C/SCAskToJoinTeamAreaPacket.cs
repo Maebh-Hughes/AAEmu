@@ -1,30 +1,29 @@
 using AAEmu.Commons.Network;
 using AAEmu.Game.Core.Network.Game;
 
-namespace AAEmu.Game.Core.Packets.G2C
+namespace AAEmu.Game.Core.Packets.G2C;
+
+public class SCAskToJoinTeamAreaPacket : GamePacket
 {
-    public class SCAskToJoinTeamAreaPacket : GamePacket
+    private readonly uint _teamId;
+    private readonly uint _senderId;
+    private readonly string _senderName;
+    private readonly bool _isParty;
+
+    public SCAskToJoinTeamAreaPacket(uint teamId, uint senderId, string senderName, bool isParty) : base(SCOffsets.SCAskToJoinTeamAreaPacket, 1)
     {
-        private readonly uint _teamId;
-        private readonly uint _id;
-        private readonly string _name;
-        private readonly bool _party;
+        _teamId = teamId;
+        _senderId = senderId;
+        _senderName = senderName;
+        _isParty = isParty;
+    }
 
-        public SCAskToJoinTeamAreaPacket(uint teamId, uint id, string name, bool party) : base(SCOffsets.SCAskToJoinTeamAreaPacket, 1)
-        {
-            _teamId = teamId;
-            _id = id;
-            _name = name;
-            _party = party;
-        }
-
-        public override PacketStream Write(PacketStream stream)
-        {
-            stream.Write(_teamId);
-            stream.Write(_id);
-            stream.Write(_name);
-            stream.Write(_party);
-            return stream;
-        }
+    public override PacketStream Write(PacketStream stream)
+    {
+        stream.Write(_teamId);
+        stream.Write(_senderId);
+        stream.Write(_senderName);
+        stream.Write(_isParty);
+        return stream;
     }
 }

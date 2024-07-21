@@ -1,16 +1,16 @@
-using AAEmu.Game.Models.Game.DoodadObj.Templates;
+﻿using AAEmu.Game.Models.Game.DoodadObj.Templates;
 using AAEmu.Game.Models.Game.Units;
 
-namespace AAEmu.Game.Models.Game.DoodadObj.Funcs
+namespace AAEmu.Game.Models.Game.DoodadObj.Funcs;
+
+public class DoodadFuncShear : DoodadFuncTemplate
 {
-    public class DoodadFuncShear : DoodadFuncTemplate
+    // doodad_funcs
+    public uint ShearTypeId { get; set; }
+    public int ShearTerm { get; set; }
+
+    public override void Use(BaseUnit caster, Doodad owner, uint skillId, int nextPhase = 0)
     {
-        public uint ShearTypeId { get; set; }
-        public int ShearTerm { get; set; }
-        
-        public override void Use(Unit caster, Doodad owner, uint skillId)
-        {
-            _log.Debug("DoodadFuncShear");
-        }
+        Logger.Trace("DoodadFuncShear");
     }
 }
