@@ -1,176 +1,177 @@
-using System;
-using System.Collections.Generic;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 
-namespace AAEmu.Game.Utils.DB
+namespace AAEmu.Game.Utils.DB;
+
+public sealed class SQLiteWrapperReader(SqliteDataReader reader) : IDisposable
 {
-    public class SQLiteWrapperReader : IDisposable
+    private readonly Dictionary<string, int> _ordinal = [];
+
+    public bool Read() => reader.Read();
+
+    public object GetValue(string column)
     {
-        private readonly SqliteDataReader _reader;
-        private readonly Dictionary<string, int> _ordinal;
+        return reader.GetValue(GetOrdinal(column));
+    }
 
-        public SQLiteWrapperReader(SqliteDataReader reader)
+    public bool GetBoolean(string column)
+    {
+        return reader.GetBoolean(GetOrdinal(column));
+    }
+
+    public bool GetBoolean(string column, bool fromString)
+    {
+        if (fromString)
         {
-            _reader = reader;
-            _ordinal = new Dictionary<string, int>();
+            if (IsDBNull(column))
+                return false;
+
+            var value = GetString(column);
+            return value == "t" || value == "1";
         }
 
-        public bool Read() => _reader.Read();
+        return GetBoolean(column);
+    }
 
-        public object GetValue(string column)
-        {
-            return _reader.GetValue(GetOrdinal(column));
-        }
+    public byte GetByte(string column)
+    {
+        return reader.GetByte(GetOrdinal(column));
+    }
 
-        public bool GetBoolean(string column)
-        {
-            return _reader.GetBoolean(GetOrdinal(column));
-        }
+    public byte GetByte(string column, byte defaultValue)
+    {
+        var ordinal = GetOrdinal(column);
+        if (reader.IsDBNull(ordinal))
+            return defaultValue;
+        return reader.GetByte(ordinal);
+    }
 
-        public bool GetBoolean(string column, bool fromString)
-        {
-            if (fromString)
-            {
-                if (IsDBNull(column))
-                    return false;
+    public long GetBytes(string column, long fieldOffset, byte[] buffer, int bufferOffset, int length)
+    {
+        return reader.GetBytes(GetOrdinal(column), fieldOffset, buffer, bufferOffset, length);
+    }
 
-                var value = GetString(column);
-                return value == "t" || value == "1";
-            }
+    public char GetChar(string column)
+    {
+        return reader.GetChar(GetOrdinal(column));
+    }
 
-            return GetBoolean(column);
-        }
+    public long GetChars(string column, long fieldOffset, char[] buffer, int bufferOffset, int length)
+    {
+        return reader.GetChars(GetOrdinal(column), fieldOffset, buffer, bufferOffset, length);
+    }
 
-        public byte GetByte(string column)
-        {
-            return _reader.GetByte(GetOrdinal(column));
-        }
+    public Guid GetGuid(string column)
+    {
+        return reader.GetGuid(GetOrdinal(column));
+    }
 
-        public byte GetByte(string column, byte defaultValue)
-        {
-            var ordinal = GetOrdinal(column);
-            if (_reader.IsDBNull(ordinal))
-                return defaultValue;
-            return _reader.GetByte(ordinal);
-        }
+    public short GetInt16(string column)
+    {
+        return reader.GetInt16(GetOrdinal(column));
+    }
 
-        public long GetBytes(string column, long fieldOffset, byte[] buffer, int bufferOffset, int length)
-        {
-            return _reader.GetBytes(GetOrdinal(column), fieldOffset, buffer, bufferOffset, length);
-        }
+    public ushort GetUInt16(string column) => (ushort)GetInt16(column);
 
-        public char GetChar(string column)
-        {
-            return _reader.GetChar(GetOrdinal(column));
-        }
+    public int GetInt32(string column)
+    {
+        //Same impl of Sqlite.Core v2.2.1
+        return (int)reader.GetInt64(GetOrdinal(column));
+    }
 
-        public long GetChars(string column, long fieldOffset, char[] buffer, int bufferOffset, int length)
-        {
-            return _reader.GetChars(GetOrdinal(column), fieldOffset, buffer, bufferOffset, length);
-        }
+    public int GetInt32(string column, int defaultValue)
+    {
+        var ordinal = GetOrdinal(column);
+        if (reader.IsDBNull(ordinal))
+            return defaultValue;
 
-        public Guid GetGuid(string column)
-        {
-            return _reader.GetGuid(GetOrdinal(column));
-        }
+        //Same impl of Sqlite.Core v2.2.1
+        return (int)reader.GetInt64(ordinal);
+    }
 
-        public short GetInt16(string column)
-        {
-            return _reader.GetInt16(GetOrdinal(column));
-        }
+    public uint GetUInt32(string column) => (uint)GetInt32(column);
 
-        public ushort GetUInt16(string column) => (ushort) GetInt16(column);
+    public uint GetUInt32(string column, uint defaultValue)
+    {
+        var ordinal = GetOrdinal(column);
+        if (reader.IsDBNull(ordinal))
+            return defaultValue;
+        return (uint)GetInt32(column);
+    }
 
-        public int GetInt32(string column)
-        {
-            return _reader.GetInt32(GetOrdinal(column));
-        }
+    public long GetInt64(string column)
+    {
+        return reader.GetInt64(GetOrdinal(column));
+    }
 
-        public int GetInt32(string column, int defaultValue)
-        {
-            var ordinal = GetOrdinal(column);
-            if (_reader.IsDBNull(ordinal))
-                return defaultValue;
-            return _reader.GetInt32(ordinal);
-        }
+    public ulong GetUInt64(string column) => (ulong)GetInt64(column);
 
-        public uint GetUInt32(string column) => (uint) GetInt32(column);
+    public float GetFloat(string column)
+    {
+        return reader.GetFloat(GetOrdinal(column));
+    }
 
-        public uint GetUInt32(string column, uint defaultValue)
-        {
-            var ordinal = GetOrdinal(column);
-            if (_reader.IsDBNull(ordinal))
-                return defaultValue;
-            return (uint) GetInt32(column);
-        }
+    public float GetFloat(string column, float defaultValue)
+    {
+        var ordinal = GetOrdinal(column);
+        if (reader.IsDBNull(ordinal))
+            return defaultValue;
+        return reader.GetFloat(ordinal);
+    }
 
-        public long GetInt64(string column)
-        {
-            return _reader.GetInt64(GetOrdinal(column));
-        }
+    public double GetDouble(string column)
+    {
+        return reader.GetDouble(GetOrdinal(column));
+    }
 
-        public ulong GetUInt64(string column) => (ulong) GetInt64(column);
+    public string GetString(string column)
+    {
+        return reader.GetString(GetOrdinal(column));
+    }
 
-        public float GetFloat(string column)
-        {
-            return _reader.GetFloat(GetOrdinal(column));
-        }
+    public string GetString(string column, string defaultValue)
+    {
+        var ordinal = GetOrdinal(column);
+        if (reader.IsDBNull(ordinal))
+            return defaultValue;
+        return reader.GetString(ordinal);
+    }
 
-        public float GetFloat(string column, float defaultValue)
-        {
-            var ordinal = GetOrdinal(column);
-            if (_reader.IsDBNull(ordinal))
-                return defaultValue;
-            return _reader.GetFloat(ordinal);
-        }
+    public decimal GetDecimal(string column)
+    {
+        return reader.GetDecimal(GetOrdinal(column));
+    }
 
-        public double GetDouble(string column)
-        {
-            return _reader.GetDouble(GetOrdinal(column));
-        }
+    public DateTime GetDateTime(string column)
+    {
+        return reader.GetDateTime(GetOrdinal(column));
+    }
 
-        public string GetString(string column)
-        {
-            return _reader.GetString(GetOrdinal(column));
-        }
+    public bool IsDBNull(string column)
+    {
+        return reader.IsDBNull(GetOrdinal(column));
+    }
 
-        public string GetString(string column, string defaultValue)
-        {
-            var ordinal = GetOrdinal(column);
-            if (_reader.IsDBNull(ordinal))
-                return defaultValue;
-            return _reader.GetString(ordinal);
-        }
+    public int GetOrdinal(string column)
+    {
+        if (_ordinal.TryGetValue(column, out var ordinal1))
+            return ordinal1;
 
-        public decimal GetDecimal(string column)
-        {
-            return _reader.GetDecimal(GetOrdinal(column));
-        }
+        var ordinal = reader.GetOrdinal(column);
+        _ordinal.Add(column, ordinal);
+        return ordinal;
+    }
 
-        public DateTime GetDateTime(string column)
-        {
-            return _reader.GetDateTime(GetOrdinal(column));
-        }
+    public void Dispose()
+    {
+        _ordinal.Clear();
+        reader.Dispose();
+    }
 
-        public bool IsDBNull(string column)
-        {
-            return _reader.IsDBNull(GetOrdinal(column));
-        }
-
-        public int GetOrdinal(string column)
-        {
-            if (_ordinal.ContainsKey(column))
-                return _ordinal[column];
-
-            var ordinal = _reader.GetOrdinal(column);
-            _ordinal.Add(column, ordinal);
-            return ordinal;
-        }
-
-        public void Dispose()
-        {
-            _ordinal.Clear();
-            _reader.Dispose();
-        }
+    public List<string> GetColumnNames()
+    {
+        var res = new List<string>();
+        for (var i = 0; i < reader.FieldCount; i++)
+            res.Add(reader.GetName(i));
+        return res;
     }
 }

@@ -1,0 +1,33 @@
+﻿using System.Numerics;
+using Jitter2.LinearMath;
+
+namespace AAEmu.Game.Models.CryEngine.Entities;
+
+public class ObstacleDataDescriptor(uint zoneId)
+{
+    public uint ZoneId { get; } = zoneId;
+    public JVector Pos { get; set; } = JVector.Zero;
+    public JVector Dir { get; set; } = JVector.Zero;
+    public double ApproxRadius { get; set; }
+    public byte Flags { get; set; }
+    public byte ApproxHeight { get; set; }
+    public byte Unk1 { get; set; }
+    public byte Unk2 { get; set; }
+
+    public bool Equals(ObstacleDataDescriptor other)
+    {
+        if (this == other)
+            return true;
+
+        if (other == null)
+            return false;
+
+        return Pos.Equals(other.Pos) &&
+               Dir.Equals(other.Dir) &&
+               ApproxRadius.Equals(other.ApproxRadius) &&
+               ApproxHeight.Equals(other.ApproxHeight) &&
+               Flags.Equals(other.Flags) &&
+               Unk1.Equals(other.Unk1) &&
+               Unk2.Equals(other.Unk2);
+    }
+}

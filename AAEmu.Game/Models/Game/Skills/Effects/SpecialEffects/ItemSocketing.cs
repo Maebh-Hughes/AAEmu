@@ -1,72 +1,72 @@
-﻿using System;
-using System.Collections.Generic;
-
-using AAEmu.Commons.Utils;
-using AAEmu.Game.Core.Managers;
-using AAEmu.Game.Core.Packets.G2C;
+﻿using AAEmu.Game.Core.Packets.G2C;
 using AAEmu.Game.Models.Game.Char;
 using AAEmu.Game.Models.Game.Items;
 using AAEmu.Game.Models.Game.Items.Actions;
 using AAEmu.Game.Models.Game.Units;
+using AAEmu.Game.Core.Managers;
 
-using NLog;
+namespace AAEmu.Game.Models.Game.Skills.Effects.SpecialEffects;
 
-namespace AAEmu.Game.Models.Game.Skills.Effects.SpecialEffects
+public class ItemSocketing : SpecialEffectAction
 {
-    public class ItemSocketing : SpecialEffectAction
+    protected override SpecialType SpecialEffectActionType => SpecialType.ItemSocketing;
+
+    public override void Execute(BaseUnit caster,
+        SkillCaster casterObj,
+        BaseUnit target,
+        SkillCastTarget targetObj,
+        CastAction castObj,
+        Skill skill,
+        SkillObject skillObject,
+        DateTime time,
+        int value1,
+        int value2,
+        int value3,
+        int value4)
     {
-        protected override SpecialType SpecialEffectActionType => SpecialType.ItemSocketing;
-        
-        public override void Execute(Unit caster,
-            SkillCaster casterObj,
-            BaseUnit target,
-            SkillCastTarget targetObj,
-            CastAction castObj,
-            Skill skill,
-            SkillObject skillObject,
-            DateTime time,
-            int value1,
-            int value2,
-            int value3,
-            int value4)
+        // TODO ...
+        Logger.Debug("Special effects: ItemSocketing value1 {0}, value2 {1}, value3 {2}, value4 {3}", value1, value2, value3, value4);
+
+        if (caster is not Character owner)
         {
-            _log.Warn("value1 {0}, value2 {1}, value3 {2}, value4 {3}", value1, value2, value3, value4);
+            Logger.Error($"Special effects: ItemSocketing caster {caster.Id} is not a character");
+            return;
+        }
 
-            var owner = (Character)caster;
-            var gemSkillItem = (SkillItem)casterObj;
-            var skillTargetItem = (SkillCastItemTarget)targetObj;
+        if (casterObj is not SkillItem gemSkillItem)
+        {
+            Logger.Error($"Special effects: ItemSocketing casterObj {casterObj} is not a SkillItem");
+            return;
+        }
 
-            if (owner == null)
-            {
-                return;
-            }
+        if (targetObj is not SkillCastItemTarget skillTargetItem)
+        {
+            Logger.Error($"Special effects: ItemSocketing targetObj {targetObj} is not a SkillCastItemTarget");
+            return;
+        }
 
-            if (gemSkillItem == null)
-            {
-                return;
-            }
+        var targetItem = owner.Inventory.GetItemById(skillTargetItem.Id);
+        var gemItem = owner.Inventory.GetItemById(gemSkillItem.ItemId);
 
-            if (skillTargetItem == null)
-            {
-                return;
-            }
+        if (targetItem is null || gemItem is null)
+        {
+            Logger.Warn($"Special effects: ItemSocketing targetItem {skillTargetItem.Id} or gemItem {gemSkillItem.ItemId} not found");
+            return;
+        }
 
-            var targetItem = owner.Inventory.GetItemById(skillTargetItem.Id);
-            var gemItem = owner.Inventory.GetItemById(gemSkillItem.ItemId);
+        if (targetItem is not EquipItem equipItem)
+        {
+            Logger.Warn($"Special effects: ItemSocketing targetItem {skillTargetItem.Id} was not a EquipItem");
+            return;
+        }
 
-            if (targetItem == null || gemItem == null)
-            {
-                return;
-            }
+        var tasksSocketing = new List<ItemTask>();
 
-            var equipItem = (EquipItem)targetItem;
-            if (equipItem == null)
-            {
-                return;
-            }
-
-            var tasksSocketing = new List<ItemTask>();
-
+        byte result = 0;
+        var installed = false;
+        if (gemItem.TemplateId != Item.DawnStone)
+        {
+            // Add LunaGem
             var gemCount = 0u;
             foreach (var gem in equipItem.GemIds)
             {
@@ -76,33 +76,51 @@ namespace AAEmu.Game.Models.Game.Skills.Effects.SpecialEffects
                 }
             }
 
-            // Check that we can put that gem in             
+            // Reject if the item has no free gem sockets (prevents GemIds[gemCount] out-of-range)
+            if (gemCount >= equipItem.GemIds.Length)
+            {
+                Logger.Warn($"Special effects: ItemSocketing target {equipItem.Id} has no free gem sockets");
+                return;
+            }
 
-            // Add gem to proper slot
-            var gemRoll = Rand.Next(0, 10000);
-            /// TODO : REMOVE THIS
-            // var gemChance = ItemManager.Instance.GetSocketChance(gemCount);
-            var gemChance = int.MaxValue;
-            
-            byte result = 0;
+            // Roll for Success
+            var gemRoll = Random.Shared.Next(0, 10000);
+            var gemChance = ItemManager.Instance.GetSocketChance(gemCount); // fetches chances from sqlite3
+            // var gemChance = int.MaxValue; //gives 100% success rates
+
             if (gemRoll < gemChance)
             {
+                // Success
                 equipItem.GemIds[gemCount] = gemItem.TemplateId;
                 result = 1;
             }
             else
             {
+                // Failed: on retail for this client version (r208022) a failed socket
+                // attempt removes ALL currently socketed gems. This harsh behavior is
+                // what made early gear progression so punishing. (Guild gems, which
+                // cannot fail, only got the keep-on-fail behavior in later versions.)
                 for (var i = 0; i < equipItem.GemIds.Length; i++)
                 {
                     equipItem.GemIds[i] = 0;
                 }
             }
-
-            tasksSocketing.Add(new ItemUpdate(equipItem));
-
-            owner.SendPacket(new SCItemTaskSuccessPacket(ItemTaskType.Socketing, tasksSocketing, new List<ulong>()));
-            owner.SendPacket(new SCItemSocketingLunagemResultPacket(result, equipItem.Id, gemItem.TemplateId, true));
-            owner.BroadcastPacket(new SCSkillEndedPacket(skill.TlId), true);
+            installed = true;
         }
+        else
+        {
+            // DawnStone
+            for (var i = 0; i < equipItem.GemIds.Length; i++)
+            {
+                equipItem.GemIds[i] = 0;
+            }
+            result = 1;
+        }
+
+        tasksSocketing.Add(new ItemUpdate(equipItem));
+
+        owner.SendPacket(new SCItemTaskSuccessPacket(ItemTaskType.Socketing, tasksSocketing, []));
+        owner.SendPacket(new SCItemSocketingLunagemResultPacket(result, equipItem.Id, gemItem.TemplateId, installed));
+        owner.BroadcastPacket(new SCSkillEndedPacket(skill.TlId), true);
     }
 }

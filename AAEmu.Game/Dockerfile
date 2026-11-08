@@ -1,19 +1,19 @@
-FROM mcr.microsoft.com/dotnet/sdk:3.1.409-focal as builder
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS builder
 ARG CONFIGURATION
-ARG RUNTIME
 ARG GAME_DB_URL
 
-RUN apt update && apt install xz-utils -y
+RUN apk add --no-cache xz
+
 WORKDIR app
+COPY ./Directory.Build.props .
+COPY ./Directory.Packages.props .
 COPY ./AAEmu.Commons ./AAEmu.Commons
 COPY ./AAEmu.Game ./AAEmu.Game
-RUN test -f ./AAEmu.Game/Data/compact.sqlite3 || wget "$GAME_DB_URL" -qO - | tar -xJf - -C ./AAEmu.Game/Data
-RUN dotnet publish ./AAEmu.Game/AAEmu.Game.csproj -c $CONFIGURATION -r $RUNTIME --self-contained true
+RUN dotnet publish ./AAEmu.Game/AAEmu.Game.csproj -c $CONFIGURATION -o /app/publish
 
-FROM ubuntu:20.04
+FROM mcr.microsoft.com/dotnet/runtime:10.0-alpine
+
 ARG CONFIGURATION
-ARG FRAMEWORK
-ARG RUNTIME
 ARG LOGIN_HOST
 ARG LOGIN_PORT
 ARG DB_HOST
@@ -21,16 +21,10 @@ ARG DB_PORT
 ARG DB_USER
 ARG DB_PASSWORD
 
-RUN apt update && apt install openssl -y
+RUN apk add --no-cache openssl mysql-client
+
 WORKDIR app
-COPY --from=builder app/AAEmu.Game/bin/$CONFIGURATION/$FRAMEWORK/$RUNTIME/publish ./
-RUN cp ./ExampleConfig.json ./Config.json
-RUN sed -i "s/%login_host%/$LOGIN_HOST/" ./Config.json
-RUN sed -i "s/%login_port%/$LOGIN_PORT/" ./Config.json
-RUN sed -i "s/%db_host%/$DB_HOST/" ./Config.json
-RUN sed -i "s/%db_port%/$DB_PORT/" ./Config.json
-RUN sed -i "s/%db_user%/$DB_USER/" ./Config.json
-RUN sed -i "s/%db_password%/$DB_PASSWORD/" ./Config.json
+COPY --from=builder /app/publish ./
 
 EXPOSE 1239 1250
-ENTRYPOINT ["./AAEmu.Game"]
+ENTRYPOINT ["dotnet", "AAEmu.Game.dll"]

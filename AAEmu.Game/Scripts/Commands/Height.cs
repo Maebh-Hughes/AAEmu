@@ -1,35 +1,49 @@
 ﻿using AAEmu.Game.Core.Managers;
 using AAEmu.Game.Core.Managers.World;
+using AAEmu.Game.Models;
 using AAEmu.Game.Models.Game;
 using AAEmu.Game.Models.Game.Char;
+using AAEmu.Game.Models.Game.World;
+using AAEmu.Game.Utils.Scripts;
 
-namespace AAEmu.Game.Scripts.Commands
+namespace AAEmu.Game.Scripts.Commands;
+
+public class Height : ICommand
 {
-    public class Height : ICommand
+    public string[] CommandNames { get; set; } = ["height"];
+
+    public void OnLoad()
     {
-        public void OnLoad()
+        CommandManager.Instance.Register(CommandNames, this);
+    }
+
+    public string GetCommandLineHelp()
+    {
+        return "(target)";
+    }
+
+    public string GetCommandHelpText()
+    {
+        return "Gets your or target's Z, FloorQuery result, terrain Blerp, and nearest nav node height";
+    }
+
+    public void Execute(Character character, string[] args, IMessageOutput messageOutput)
+    {
+        var targetPlayer = character;
+        if (args.Length > 0)
         {
-            CommandManager.Instance.Register("height", this);
+            targetPlayer = WorldManager.Instance.GetTargetOrSelf(character, args[0], out var firstArg);
         }
 
-        public string GetCommandLineHelp()
-        {
-            return "(target)";
-        }
+        var pos = targetPlayer.Transform.World.Position;
+        var floorHit = targetPlayer.ParentWorld.Template.Floor.QueryFloor(pos.X, pos.Y, pos.Z, FloorContext.Debug);
+        var terrainZ = targetPlayer.ParentWorld.Template.GetHeight(pos.X, pos.Y);
+        var navNodeZ = targetPlayer.ParentWorld.Template.GeoData.GetHeight(pos);
 
-        public string GetCommandHelpText()
-        {
-            return "Gets your or target's current height and that of the supposed floor (using heightmap data)";
-        }
-
-        public void Execute(Character character, string[] args)
-        {
-            Character targetPlayer = character;
-            if (args.Length > 0)
-                targetPlayer = WorldManager.Instance.GetTargetOrSelf(character, args[0], out var firstarg);
-
-            var height = WorldManager.Instance.GetHeight(targetPlayer.Transform.ZoneId, targetPlayer.Transform.World.Position.X, targetPlayer.Transform.World.Position.Y);
-            character.SendMessage("[Height] {2} Z-Pos: {0} - Floor: {1}", character.Transform.World.Position.Z, height, targetPlayer.Name);
-        }
+        var mode = AppConfiguration.Instance.World.FloorPolicy;
+        CommandManager.SendNormalText(
+            this,
+            messageOutput,
+            $"{targetPlayer.Name} Z={pos.Z:0.###} Floor={floorHit.Z:0.###} mode={mode} src={floorHit.Provider} Terrain={terrainZ:0.###} Nav={navNodeZ:0.###} deltaNav={floorHit.DeltaNav:0.###} deltaTerrain={floorHit.DeltaTerrain:0.###}");
     }
 }

@@ -1,14 +1,14 @@
 ﻿using AAEmu.Game.Models.Game.DoodadObj.Templates;
 using AAEmu.Game.Models.Game.Units;
 
-namespace AAEmu.Game.Models.Game.DoodadObj.Funcs
+namespace AAEmu.Game.Models.Game.DoodadObj.Funcs;
+
+public class DoodadFuncDyeingredientCollect : DoodadFuncTemplate
 {
-    public class DoodadFuncDyeingredientCollect : DoodadFuncTemplate
+    // doodad_funcs
+    public override void Use(BaseUnit caster, Doodad owner, uint skillId, int nextPhase = 0)
     {
-        public override void Use(Unit caster, Doodad owner, uint skillId, int nextPhase = 0)
-        {
-            _log.Debug("DoodadFuncDyeingredientCollect");
-            owner.ToPhaseAndUse = false;
-        }
+        Logger.Trace("DoodadFuncDyeingredientCollect");
+
     }
 }

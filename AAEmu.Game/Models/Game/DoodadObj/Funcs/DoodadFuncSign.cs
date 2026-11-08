@@ -1,17 +1,16 @@
 ﻿using AAEmu.Game.Models.Game.DoodadObj.Templates;
 using AAEmu.Game.Models.Game.Units;
 
-namespace AAEmu.Game.Models.Game.DoodadObj.Funcs
-{
-    public class DoodadFuncSign : DoodadFuncTemplate
-    {
-        public string Name { get; set; }
-        public int PickNum { get; set; }
+namespace AAEmu.Game.Models.Game.DoodadObj.Funcs;
 
-        public override void Use(Unit caster, Doodad owner, uint skillId, int nextPhase = 0)
-        {
-            _log.Debug("DoodadFuncSign");
-            owner.ToPhaseAndUse = false;
-        }
+public class DoodadFuncSign : DoodadPhaseFuncTemplate
+{
+    public string Name { get; set; }
+    public int PickNum { get; set; }
+
+    public override bool Use(BaseUnit caster, Doodad owner)
+    {
+        Logger.Trace("DoodadFuncSign");
+        return false;
     }
 }

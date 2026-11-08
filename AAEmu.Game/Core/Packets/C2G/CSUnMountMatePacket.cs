@@ -1,25 +1,18 @@
 ﻿using AAEmu.Commons.Network;
-using AAEmu.Game.Core.Managers;
 using AAEmu.Game.Core.Network.Game;
 using AAEmu.Game.Models.Game.DoodadObj.Static;
-using AAEmu.Game.Models.Game.Units.Static;
 
-namespace AAEmu.Game.Core.Packets.C2G
+namespace AAEmu.Game.Core.Packets.C2G;
+
+public class CSUnMountMatePacket() : GamePacket(CSOffsets.CSUnMountMatePacket, 1)
 {
-    public class CSUnMountMatePacket : GamePacket
+    public override void Read(PacketStream stream)
     {
-        public CSUnMountMatePacket() : base(CSOffsets.CSUnMountMatePacket, 1)
-        {
-        }
+        var tlId = stream.ReadUInt16();
+        var ap = (AttachPointKind)stream.ReadByte();
+        var reason = (AttachUnitReason)stream.ReadByte();
 
-        public override void Read(PacketStream stream)
-        {
-            var tlId = stream.ReadUInt16();
-            var ap = (AttachPointKind)stream.ReadByte();
-            var reason = (AttachUnitReason)stream.ReadByte();
-
-            //_log.Warn("UnMountMate, TlId: {0}, Ap: {1}, Reason: {2}", tlId, ap, reason);
-            MateManager.Instance.UnMountMate(Connection.ActiveChar, tlId, ap, reason);
-        }
+        //Logger.Warn("UnMountMate, TlId: {0}, Ap: {1}, Reason: {2}", tlId, ap, reason);
+        Connection.ActiveChar.ParentWorld.MateManager.UnMountMate(Connection.ActiveChar, tlId, ap, reason);
     }
 }

@@ -1,54 +1,51 @@
-﻿using System;
-using System.Configuration;
-using System.Threading;
-using System.Threading.Tasks;
-using AAEmu.Commons.Utils.Updater;
+﻿using AAEmu.Commons.Utils.Updater;
 using AAEmu.Login.Core.Controllers;
 using AAEmu.Login.Core.Network.Internal;
-using AAEmu.Login.Core.Network.Login;
 using AAEmu.Login.Models;
 using AAEmu.Login.Utils;
-using Microsoft.Extensions.Hosting;
-using NLog;
+using Microsoft.Extensions.Options;
 
-namespace AAEmu.Login
+namespace AAEmu.Login;
+
+public sealed class LoginService(
+    IGameController gameController,
+    IRequestController requestController,
+    IInternalNetwork internalNetwork,
+    IMySqlConnectionFactory connectionFactory,
+    IOptions<DBConnectionsConfig> dbConnectionsConfig,
+    ILogger<LoginService> logger) : IHostedService, IDisposable
 {
-    public class LoginService : IHostedService, IDisposable
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
-        private static Logger _log = LogManager.GetCurrentClassLogger();
+        logger.LogInformation("Starting daemon: AAEmu.Login");
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        // Check for updates
+        await using (var connection = connectionFactory.CreateConnection())
         {
-            _log.Info("Starting daemon: AAEmu.Login");
-            // Check for updates
-            using (var connection = AAEmu.Login.Utils.MySQL.Create())
+            if (!MySqlDatabaseUpdater.Run(connection, "aaemu_login",
+                    dbConnectionsConfig.Value.MySQLProvider.Database,
+                    dbConnectionsConfig.Value.AutoApplyUpdates))
             {
-                if (!MySqlDatabaseUpdater.Run(connection, "aaemu_login", AppConfiguration.Instance.Connections.MySQLProvider.Database))
-                {
-                    _log.Fatal("Failed up update database !");
-                    _log.Fatal("Press Ctrl+C to quit");
-                    return Task.CompletedTask;
-                }
+                logger.LogCritical("Failed to update database!");
+                logger.LogCritical("Press Ctrl+C to quit");
+                return;
             }
-            RequestController.Instance.Initialize();
-            GameController.Instance.Load();
-            LoginNetwork.Instance.Start();
-            InternalNetwork.Instance.Start();
-            return Task.CompletedTask;
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            _log.Info("Stopping daemon.");
-            LoginNetwork.Instance?.Stop();
-            InternalNetwork.Instance?.Stop();
-            return Task.CompletedTask;
-        }
+        requestController.Initialize();
+        gameController.Load();
+        internalNetwork.Start();
+    }
 
-        public void Dispose()
-        {
-            _log.Info("Disposing....");
-            LogManager.Flush();
-        }
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Stopping daemon.");
+        internalNetwork.Stop();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        logger.LogInformation("Disposing...");
     }
 }

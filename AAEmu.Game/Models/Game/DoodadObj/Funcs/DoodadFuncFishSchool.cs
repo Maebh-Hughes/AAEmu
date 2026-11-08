@@ -1,16 +1,18 @@
 ﻿using AAEmu.Game.Models.Game.DoodadObj.Templates;
 using AAEmu.Game.Models.Game.Units;
 
-namespace AAEmu.Game.Models.Game.DoodadObj.Funcs
+namespace AAEmu.Game.Models.Game.DoodadObj.Funcs;
+
+public class DoodadFuncFishSchool : DoodadPhaseFuncTemplate
 {
-    public class DoodadFuncFishSchool : DoodadFuncTemplate
+    public uint NpcSpawnerId { get; set; }
+
+    public override bool Use(BaseUnit caster, Doodad owner)
     {
-        public uint NpcSpawnerId { get; set; }
-        
-        public override void Use(Unit caster, Doodad owner, uint skillId, int nextPhase = 0)
-        {
-            _log.Debug("DoodadFuncFishSchool");
-            owner.ToPhaseAndUse = false;
-        }
+        Logger.Trace($"DoodadFuncFishSchool NpcSpawnerId={NpcSpawnerId}");
+
+        //No initial spawn, fish spawn are triggered by fishing.
+
+        return false;
     }
 }

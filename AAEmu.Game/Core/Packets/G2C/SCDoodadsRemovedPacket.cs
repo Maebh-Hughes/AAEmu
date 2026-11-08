@@ -1,31 +1,22 @@
 ﻿using AAEmu.Commons.Network;
 using AAEmu.Game.Core.Network.Game;
 
-namespace AAEmu.Game.Core.Packets.G2C
+namespace AAEmu.Game.Core.Packets.G2C;
+
+public class SCDoodadsRemovedPacket(bool last, uint[] ids) : GamePacket(SCOffsets.SCDoodadsRemovedPacket, 1)
 {
-    public class SCDoodadsRemovedPacket : GamePacket
+    public const int MaxCountPerPacket = 400; // Suggested Maximum Size
+
+    public override PacketStream Write(PacketStream stream)
     {
-        private readonly bool _last;
-        private readonly uint[] _ids;
-        public const int MaxCountPerPacket = 400; // Suggested Maximum Size
-
-        public SCDoodadsRemovedPacket(bool last, uint[] ids) : base(SCOffsets.SCDoodadsRemovedPacket, 1)
+        stream.Write((ushort)ids.Length);
+        stream.Write(last);
+        foreach (var id in ids)
         {
-            _last = last;
-            _ids = ids;
+            stream.WriteBc(id);
+            stream.Write(false); // e  if false then the doodad will be deleted
         }
 
-        public override PacketStream Write(PacketStream stream)
-        {
-            stream.Write((ushort) _ids.Length);
-            stream.Write(_last);
-            foreach (var id in _ids)
-            {
-                stream.WriteBc(id);
-                stream.Write(false); // e  if false then the doodad will be deleted
-            }
-
-            return stream;
-        }
+        return stream;
     }
 }

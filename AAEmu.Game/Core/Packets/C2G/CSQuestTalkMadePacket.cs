@@ -1,23 +1,30 @@
 ﻿using AAEmu.Commons.Network;
+using AAEmu.Game.Core.Managers;
 using AAEmu.Game.Core.Network.Game;
 
-namespace AAEmu.Game.Core.Packets.C2G
-{
-    public class CSQuestTalkMadePacket : GamePacket
-    {
-        public CSQuestTalkMadePacket() : base(CSOffsets.CSQuestTalkMadePacket, 1)
-        {
-        }
+namespace AAEmu.Game.Core.Packets.C2G;
 
-        public override void Read(PacketStream stream)
+public class CSQuestTalkMadePacket() : GamePacket(CSOffsets.CSQuestTalkMadePacket, 1)
+{
+    private uint _npcObjId;
+    private uint _questContextId;
+    private uint _questCompId;
+    private uint _questActId;
+
+    public override void Read(PacketStream stream)
+    {
+        _npcObjId = stream.ReadBc();
+        _questContextId = stream.ReadUInt32();
+        _questCompId = stream.ReadUInt32();
+        _questActId = stream.ReadUInt32();
+
+        Logger.Warn("QuestTalkMade: npcObjId {0}, questContextId {1}, questCompId {2}, questActId {3}", _npcObjId, _questContextId, _questCompId, _questActId);
+        //Connection.ActiveChar.Quests.OnTalkMade(_npcObjId, _questContextId, _questCompId, _questActId);
+        // инициируем событие
+        //Task.Run(() => QuestManager.Instance.DoTalkMadeEvents(Connection.ActiveChar, _npcObjId, _questContextId, _questCompId, _questActId));
+        if (Connection != null)
         {
-            // TODO find unk
-            var objId = stream.ReadBc();
-            var unkId = stream.ReadUInt32();
-            var unk2Id = stream.ReadUInt32();
-            var unk3Id = stream.ReadUInt32();
-            
-            _log.Warn("QuestTalkMade, ObjId: {0}, Id: {1}, {2}, {3}", objId, unkId, unk2Id, unk3Id);
+            QuestManager.Instance.DoTalkMadeEvents(Connection.ActiveChar, Connection.ActiveChar, _npcObjId, _questContextId, _questCompId, _questActId);
         }
     }
 }

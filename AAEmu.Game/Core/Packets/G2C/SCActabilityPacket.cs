@@ -2,31 +2,21 @@
 using AAEmu.Game.Core.Network.Game;
 using AAEmu.Game.Models.Game.Char;
 
-namespace AAEmu.Game.Core.Packets.G2C
+namespace AAEmu.Game.Core.Packets.G2C;
+
+public class SCActabilityPacket(bool last, Actability[] actabilities) : GamePacket(SCOffsets.SCActabilityPacket, 1)
 {
-    public class SCActabilityPacket : GamePacket
+    public override PacketStream Write(PacketStream stream)
     {
-        private readonly bool _last;
-        private readonly Actability[] _actabilities;
-
-        public SCActabilityPacket(bool last, Actability[] actabilities) : base(SCOffsets.SCActabilityPacket, 1)
+        stream.Write(last);
+        stream.Write((byte)actabilities.Length); // TODO max count 100
+        foreach (var actability in actabilities)
         {
-            _last = last;
-            _actabilities = actabilities;
+            stream.Write(actability.Id);
+            stream.Write(actability.Point);
+            stream.Write(actability.Step);
         }
 
-        public override PacketStream Write(PacketStream stream)
-        {
-            stream.Write(_last);
-            stream.Write((byte)_actabilities.Length); // TODO max count 100
-            foreach (var actability in _actabilities)
-            {
-                stream.Write(actability.Id);
-                stream.Write(actability.Point);
-                stream.Write(actability.Step);
-            }
-
-            return stream;
-        }
+        return stream;
     }
 }

@@ -3,20 +3,15 @@ using AAEmu.Game.Core.Managers.World;
 using AAEmu.Game.Core.Network.Game;
 using AAEmu.Game.Core.Packets.G2C;
 
-namespace AAEmu.Game.Core.Packets.C2G
+namespace AAEmu.Game.Core.Packets.C2G;
+
+public class CSSpecialtyRatioPacket() : GamePacket(CSOffsets.CSSpecialtyRatioPacket, 1)
 {
-    public class CSSpecialtyRatioPacket : GamePacket
+    public override void Read(PacketStream stream)
     {
-        public CSSpecialtyRatioPacket() : base(CSOffsets.CSSpecialtyRatioPacket, 1)
-        {
-        }
+        var id = stream.ReadUInt32();
 
-        public override void Read(PacketStream stream)
-        {
-            var id = stream.ReadUInt32();
-
-            var ratio = SpecialtyManager.Instance.GetRatioForSpecialty(Connection.ActiveChar);
-            Connection.ActiveChar.SendPacket(new SCSpecialtyRatioPacket(ratio));
-        }
+        var ratio = SpecialtyManager.Instance.GetRatioForSpecialty(Connection.ActiveChar);
+        Connection.ActiveChar.SendPacket(new SCSpecialtyRatioPacket(ratio));
     }
 }

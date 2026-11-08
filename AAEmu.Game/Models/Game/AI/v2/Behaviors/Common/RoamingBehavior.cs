@@ -1,89 +1,69 @@
-﻿using System;
-using System.Numerics;
-using AAEmu.Game.Core.Managers.World;
+﻿using System.Numerics;
+using AAEmu.Game.Core.Packets.G2C;
 using AAEmu.Game.Models.Game.AI.Utils;
-using AAEmu.Game.Models.Game.Units;
-using AAEmu.Game.Models.Game.World;
+using AAEmu.Game.Models.Game.Models;
+using AAEmu.Game.Models.Game.Units.Movements;
 using AAEmu.Game.Utils;
+using Jitter2.LinearMath;
 
-namespace AAEmu.Game.Models.Game.AI.v2.Behaviors
+namespace AAEmu.Game.Models.Game.AI.v2.Behaviors.Common;
+
+public class RoamingBehavior : BaseCombatBehavior
 {
-    public class RoamingBehavior : Behavior
+    private JVector _targetRoamPosition = JVector.Zero;
+    private DateTime _nextRoaming;
+    private bool _enter;
+
+    public override void Enter()
     {
-        private Vector3 _targetRoamPosition = Vector3.Zero;
-        private DateTime _nextRoaming;
-        
-        public override void Enter()
+        Ai.Owner.InterruptSkills();
+        //Ai.Owner.BroadcastPacket(new SCUnitModelPostureChangedPacket(Ai.Owner, BaseUnitType.Npc, ModelPostureType.ActorModelState, Ai.Owner.Template.AnimActionId, false), false); // fixed animated
+        //UpdateRoaming();
+        Ai.Owner.CurrentGameStance = GameStanceType.Relaxed;
+        Ai.Owner.CurrentAlertness = MoveTypeAlertness.Idle;
+        _enter = true;
+    }
+
+    public override void Tick(TimeSpan delta)
+    {
+        if (!_enter)
+            return; // not initialized yet Enter()
+
+        if (!CheckAggression())
+            CheckAlert();
+
+        if (_targetRoamPosition.Equals(JVector.Zero) && DateTime.UtcNow > _nextRoaming)
         {
             UpdateRoaming();
+            Ai.Owner.BroadcastPacket(new SCUnitModelPostureChangedPacket(Ai.Owner, Ai.Owner.AnimActionId, false), false);
         }
 
-        public override void Tick(TimeSpan delta)
+        if (_targetRoamPosition.Equals(JVector.Zero))
+            return;
+
+        var moveSpeed = Ai.GetRealMovementSpeed(Ai.Owner.BaseMoveSpeed);
+        var moveFlags = Ai.GetRealMovementFlags(moveSpeed);
+        moveSpeed *= delta.Milliseconds / 1000.0;
+        Ai.Owner.MoveTowards(_targetRoamPosition, (float)moveSpeed, moveFlags);
+
+        var dist = MathUtil.CalculateDistance(Ai.Owner.Transform.World.Position, _targetRoamPosition);
+        if (dist < 1.0f)
         {
-            if (Ai.Owner.Template.Aggression)
-            {
-                var nearbyUnits = WorldManager.Instance.GetAround<Unit>(Ai.Owner, 10 * Ai.Owner.Template.SightRangeScale);
-
-                foreach (var unit in nearbyUnits)
-                {
-                    if (Ai.Owner.Template.Aggression)
-                    {
-                        //Need to check for stealth detection here..
-                        if (Ai.Owner.Template.SightFovScale >= 2.0f || MathUtil.IsFront(Ai.Owner, unit))
-                        {
-                            if (Ai.Owner.CanAttack(unit))
-                            {
-                                OnEnemySeen(unit);
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            var rangeOfUnit = MathUtil.CalculateDistance(Ai.Owner, unit, true);
-                            if (rangeOfUnit < 3 * Ai.Owner.Template.SightRangeScale)
-                            {
-                                if (Ai.Owner.CanAttack(unit))
-                                {
-                                    OnEnemySeen(unit);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (_targetRoamPosition.Equals(Vector3.Zero) && DateTime.UtcNow > _nextRoaming)
-                UpdateRoaming();
-            
-            if (_targetRoamPosition.Equals(Vector3.Zero))
-                return;
-            
-            Ai.Owner.MoveTowards(_targetRoamPosition, 1.8f * (delta.Milliseconds / 1000.0f), 5);
-            var dist = MathUtil.CalculateDistance(Ai.Owner.Transform.World.Position, _targetRoamPosition);
-            if (dist < 1.0f)
-            {
-                Ai.Owner.StopMovement();
-                _targetRoamPosition = Vector3.Zero;
-                _nextRoaming = DateTime.UtcNow.AddSeconds(3); // Rand 3-6 would look nice ?
-            }
+            Ai.Owner.StopMovement();
+            _targetRoamPosition = JVector.Zero;
+            _nextRoaming = DateTime.UtcNow.AddSeconds(Random.Shared.Next(3, 6)); // Rand 3-6 would look nice ?
+            Ai.Owner.BroadcastPacket(new SCUnitModelPostureChangedPacket(Ai.Owner, Ai.Owner.AnimActionId, true), false);
         }
+    }
 
-        public override void Exit()
-        {
-        }
+    public override void Exit()
+    {
+        _enter = false;
+    }
 
-        private void UpdateRoaming()
-        {
-            // TODO : Group member handling
-           
-            _targetRoamPosition = AIUtils.CalcNextRoamingPosition(Ai).Local.Position;
-        }
-
-        public void OnEnemySeen(Unit target)
-        {
-            Ai.Owner.AddUnitAggro(NPChar.AggroKind.Damage, target, 1);
-            Ai.GoToCombat();
-        }
+    private void UpdateRoaming()
+    {
+        // TODO : Group member handling
+        _targetRoamPosition = AiUtils.CalcNextRoamingPosition(Ai);
     }
 }

@@ -1,16 +1,10 @@
 ﻿using System.Numerics;
+using Jitter2.LinearMath;
 
-namespace AAEmu.Game.Models.ClientData
+namespace AAEmu.Game.Models.ClientData;
+
+public class AABB
 {
-    public class AABB
-    {
-        public Vector3 Min;
-        public Vector3 Max;
-
-        public AABB()
-        {
-            Min = new Vector3();
-            Max = new Vector3();
-        }
-    }
+    public JVector Min = new();
+    public JVector Max = new();
 }

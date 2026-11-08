@@ -1,33 +1,23 @@
 using AAEmu.Commons.Network;
 using AAEmu.Game.Core.Network.Game;
 using AAEmu.Game.Models.Game.Items;
+using AAEmu.Game.Models.Game.Mails;
 
-namespace AAEmu.Game.Core.Packets.G2C
+namespace AAEmu.Game.Core.Packets.G2C;
+
+public class SCMailFailedPacket(MailResult err, (SlotType slotType, byte slot)[] items, bool money)
+    : GamePacket(SCOffsets.SCMailFailedPacket, 1)
 {
-    public class SCMailFailedPacket : GamePacket
+    public override PacketStream Write(PacketStream stream)
     {
-        private readonly byte _err;
-        private readonly (SlotType slotType, byte slot)[] _items;
-        private readonly bool _money;
-
-        public SCMailFailedPacket(byte err, (SlotType slotType, byte slot)[] items, bool money) : base(SCOffsets.SCMailFailedPacket, 1)
+        stream.Write((byte)err);
+        foreach (var (slotType, slot) in items) // TODO 10 items
         {
-            _err = err;
-            _items = items;
-            _money = money;
+            stream.Write((byte)slotType);
+            stream.Write(slot);
         }
 
-        public override PacketStream Write(PacketStream stream)
-        {
-            stream.Write(_err);
-            foreach (var (slotType, slot) in _items) // TODO 10 items
-            {
-                stream.Write((byte)slotType);
-                stream.Write(slot);
-            }
-
-            stream.Write(_money);
-            return stream;
-        }
+        stream.Write(money);
+        return stream;
     }
 }
